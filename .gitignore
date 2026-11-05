@@ -16,14 +16,8 @@ target/
 .settings/
 .metadata/
 
-# SonarLint files
+# SonarLint
 .sonarlint/
-
-# IntelliJ IDEA
-.idea/
-
-# VS Code
-.vscode/
 
 # OS generated files
 .DS_Store
