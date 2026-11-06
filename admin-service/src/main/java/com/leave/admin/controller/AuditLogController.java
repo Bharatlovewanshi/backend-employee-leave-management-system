@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import com.leave.admin.entity.AuditLog;
 import com.leave.admin.service.AuditLogService;
@@ -46,6 +47,20 @@ public class AuditLogController {
 
         List<AuditLog> auditLogs =
                 auditLogService.getAllAuditLogs();
+
+        return ResponseEntity.ok(auditLogs);
+    }
+ // Retrieve audit logs for a specific entity
+    @GetMapping("/{entityType}/{entityReference}")
+    public ResponseEntity<List<AuditLog>> getAuditLogsByEntity(
+            @PathVariable String entityType,
+            @PathVariable Long entityReference) {
+
+        List<AuditLog> auditLogs =
+                auditLogService.getAuditLogsByEntity(
+                        entityType,
+                        entityReference
+                );
 
         return ResponseEntity.ok(auditLogs);
     }

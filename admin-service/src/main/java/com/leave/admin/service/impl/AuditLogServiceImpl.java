@@ -30,4 +30,15 @@ public class AuditLogServiceImpl implements AuditLogService {
     public List<AuditLog> getAllAuditLogs() {
         return auditLogRepository.findAll();
     }
+ // Retrieve audit logs for a specific entity
+    @Override
+    public List<AuditLog> getAuditLogsByEntity(
+            String entityType,
+            Long entityReference) {
+
+        return auditLogRepository.findByEntityTypeAndEntityReference(
+                entityType,
+                entityReference
+        );
+    }
 }
