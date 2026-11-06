@@ -7,11 +7,15 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.leave.admin.dto.EmployeeResponse;
 import com.leave.admin.dto.LeaveRecordResponse;
+import com.leave.admin.entity.AuditLog;
+import com.leave.admin.enums.AuditAction;
 import com.leave.admin.exception.AdminOperationException;
 import com.leave.admin.service.AdminService;
+import com.leave.admin.service.AuditLogService;
 
 @Service
 public class AdminServiceImpl implements AdminService {
@@ -19,7 +23,10 @@ public class AdminServiceImpl implements AdminService {
     private final Map<Long, LeaveRecordResponse> leaveRequests =
             new LinkedHashMap<>();
 
-    public AdminServiceImpl() {
+    private final AuditLogService auditLogService;
+
+    public AdminServiceImpl(AuditLogService auditLogService) {
+        this.auditLogService = auditLogService;
 
         // Temporary mock leave request data
         leaveRequests.put(501L, new LeaveRecordResponse(
@@ -97,8 +104,9 @@ public class AdminServiceImpl implements AdminService {
         return leave;
     }
 
-    // Approve leave request
+    // Approve leave request and create audit log
     @Override
+    @Transactional
     public LeaveRecordResponse approveLeaveRequest(
             Long leaveId, Long adminUserId) {
 
@@ -110,13 +118,27 @@ public class AdminServiceImpl implements AdminService {
             );
         }
 
+        String oldStatus = leave.getStatus();
+
         leave.setStatus("APPROVED");
+
+        AuditLog auditLog = new AuditLog();
+        auditLog.setAdminUserId(adminUserId);
+        auditLog.setAction(AuditAction.UPDATE);
+        auditLog.setEntityType("LEAVE");
+        auditLog.setEntityReference(leaveId);
+        auditLog.setOldValue(oldStatus);
+        auditLog.setNewValue("APPROVED");
+        auditLog.setReason("Leave approved by admin");
+
+        auditLogService.createAuditLog(auditLog);
 
         return leave;
     }
 
-    // Reject leave request
+    // Reject leave request and create audit log
     @Override
+    @Transactional
     public LeaveRecordResponse rejectLeaveRequest(
             Long leaveId, Long adminUserId, String reason) {
 
@@ -134,8 +156,21 @@ public class AdminServiceImpl implements AdminService {
             );
         }
 
+        String oldStatus = leave.getStatus();
+
         leave.setStatus("REJECTED");
         leave.setReason(reason);
+
+        AuditLog auditLog = new AuditLog();
+        auditLog.setAdminUserId(adminUserId);
+        auditLog.setAction(AuditAction.UPDATE);
+        auditLog.setEntityType("LEAVE");
+        auditLog.setEntityReference(leaveId);
+        auditLog.setOldValue(oldStatus);
+        auditLog.setNewValue("REJECTED");
+        auditLog.setReason(reason);
+
+        auditLogService.createAuditLog(auditLog);
 
         return leave;
     }
