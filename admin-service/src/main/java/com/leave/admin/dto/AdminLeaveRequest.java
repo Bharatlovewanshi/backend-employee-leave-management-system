@@ -1,9 +1,19 @@
 
 package com.leave.admin.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
+
 public class AdminLeaveRequest {
 
+    @NotNull(message = "Admin user ID is required")
+    @Positive(message = "Admin user ID must be positive")
     private Long adminUserId;
+
+    @NotBlank(message = "Reason is required")
+    @Size(max = 500, message = "Reason cannot exceed 500 characters")
     private String reason;
 
     public AdminLeaveRequest() {
