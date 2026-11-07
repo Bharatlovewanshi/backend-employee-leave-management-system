@@ -36,15 +36,15 @@ public class ManagerDecisionResponse {
     /**
      * Decision made by the manager (APPROVED or REJECTED).
      */
-    private DecisionType decisionType;
+    private DecisionType decision;
 
     /**
-     * Comments provided by the manager.
+     * Reason provided by the manager when rejecting a leave request.
      */
-    private String comments;
+    private String rejectionReason;
 
     /**
      * Date and time when the decision was made.
      */
-    private LocalDateTime decisionDate;
+    private LocalDateTime decisionAt;
 }

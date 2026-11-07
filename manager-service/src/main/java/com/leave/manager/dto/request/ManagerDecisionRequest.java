@@ -4,10 +4,11 @@ import com.leave.manager.enums.DecisionType;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.NoArgsConstructor;
+
 import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 /**
  * Request DTO for submitting a manager's leave approval or rejection decision.
@@ -33,12 +34,12 @@ public class ManagerDecisionRequest {
     /**
      * Decision made by the manager (APPROVED or REJECTED).
      */
-    @NotNull(message = "Decision type is required")
-    private DecisionType decisionType;
+    @NotNull(message = "Decision is required")
+    private DecisionType decision;
 
     /**
-     * Optional comments provided by the manager.
+     * Reason provided by the manager when rejecting a leave request.
      */
-    @Size(max = 500, message = "Comments cannot exceed 500 characters")
-    private String comments;
+    @Size(max = 500, message = "Rejection reason cannot exceed 500 characters")
+    private String rejectionReason;
 }

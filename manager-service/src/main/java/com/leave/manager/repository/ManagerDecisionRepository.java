@@ -34,20 +34,20 @@ public interface ManagerDecisionRepository extends JpaRepository<ManagerDecision
     Optional<ManagerDecision> findByLeaveRequestId(Long leaveRequestId);
 
     /**
-     * Retrieves all leave decisions based on their decision type.
+     * Retrieves all leave decisions based on their decision.
      *
-     * @param decisionType type of decision (APPROVED or REJECTED)
+     * @param decision decision type (APPROVED or REJECTED)
      * @return list of matching decisions
      */
-    List<ManagerDecision> findByDecisionType(DecisionType decisionType);
+    List<ManagerDecision> findByDecision(DecisionType decision);
 
     /**
-     * Retrieves decisions made by a specific manager with a given decision type.
+     * Retrieves decisions made by a specific manager with a given decision.
      *
      * @param managerId unique ID of the manager
-     * @param decisionType type of decision
+     * @param decision decision type
      * @return list of matching decisions
      */
-    List<ManagerDecision> findByManagerIdAndDecisionType(
-            Long managerId, DecisionType decisionType);
+    List<ManagerDecision> findByManagerIdAndDecision(
+            Long managerId, DecisionType decision);
 }
