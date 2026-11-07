@@ -1,15 +1,31 @@
+# Java build files
+**/target/
+
+# Eclipse
+**/.settings/
+**/.metadata/
+
+# IntelliJ
+**/.idea/
+**/*.iml
+=======
 # Maven build output
 target/
 *.class
 
+
 # Logs
 *.log
 
+# Environment files and secrets
 # Environment variables and secrets
 .env
 .env.*
 !.env.example
 
+# OS files
+.DS_Store
+Thumbs.db
 # Eclipse IDE files
 .classpath
 .project
