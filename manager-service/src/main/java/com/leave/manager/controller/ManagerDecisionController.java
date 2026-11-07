@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
  * REST controller for managing employee leave approval and rejection.
  * Provides APIs for processing manager decisions and retrieving leave requests.
  */
+@CrossOrigin(origins = "http://localhost:5173")
 @RestController
 @RequestMapping("/api/manager/decisions")
 @RequiredArgsConstructor
@@ -46,7 +47,7 @@ public class ManagerDecisionController {
                         response
                 );
 
-        return new ResponseEntity<>(apiResponse, HttpStatus.CREATED);
+        return ResponseEntity.status(HttpStatus.CREATED).body(apiResponse);
     }
 
     /**
@@ -57,7 +58,7 @@ public class ManagerDecisionController {
      */
     @GetMapping("/pending/{managerId}")
     public ResponseEntity<ApiResponse<List<PendingLeaveResponse>>> getPendingLeaveRequests(
-            @PathVariable Long managerId) {
+            @PathVariable("managerId") Long managerId) {
 
         List<PendingLeaveResponse> response =
                 managerDecisionService.getPendingLeaveRequests(managerId);
@@ -80,7 +81,7 @@ public class ManagerDecisionController {
      */
     @GetMapping("/manager/{managerId}")
     public ResponseEntity<ApiResponse<List<ManagerDecisionResponse>>> getManagerDecisions(
-            @PathVariable Long managerId) {
+            @PathVariable("managerId") Long managerId) {
 
         List<ManagerDecisionResponse> response =
                 managerDecisionService.getManagerDecisions(managerId);

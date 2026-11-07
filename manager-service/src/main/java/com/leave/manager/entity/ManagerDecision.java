@@ -13,11 +13,11 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
 
 @Entity
 @Table(name = "manager_decisions")
@@ -31,24 +31,31 @@ public class ManagerDecision {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(name = "leave_request_id", nullable = false, unique = true)
     private Long leaveRequestId;
 
-    @Column(nullable = false)
+    @Column(name = "manager_id", nullable = false)
     private Long managerId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private DecisionType decisionType;
+    @Column(name = "decision", nullable = false, length = 20)
+    private DecisionType decision;
 
-    @Column(length = 500)
-    private String comments;
+    @Column(name = "rejection_reason", length = 500)
+    private String rejectionReason;
 
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime decisionDate;
+    @Column(name = "decision_at", nullable = false, updatable = false)
+    private LocalDateTime decisionAt;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
     @PrePersist
     protected void onCreate() {
-        this.decisionDate = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
+
+        this.decisionAt = now;
+        this.createdAt = now;
     }
+
 }

@@ -9,15 +9,19 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.NoArgsConstructor;
+
 import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "notification_logs")
@@ -31,28 +35,40 @@ public class NotificationLog {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "manager_decision_id", nullable = false)
+    private ManagerDecision managerDecision;
+
+    @Column(name = "leave_request_id", nullable = false)
     private Long leaveRequestId;
 
-    @Column(nullable = false)
-    private Long recipientId;
+    @Column(name = "employee_id", nullable = false)
+    private Long employeeId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "notification_type", nullable = false, length = 20)
     private NotificationType notificationType;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private NotificationStatus notificationStatus;
-
-    @Column(length = 500)
+    
+    @Column(name = "message", length = 500)
     private String message;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "notification_status", nullable = false, length = 20)
+    private NotificationStatus notificationStatus;
+
+    @Column(name = "error_message", length = 1000)
+    private String errorMessage;
+
+    @Column(name = "sent_at")
     private LocalDateTime sentAt;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+    
+    @Column(name = "is_read", nullable = false)
+    private Boolean isRead = false;
 
+    
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
