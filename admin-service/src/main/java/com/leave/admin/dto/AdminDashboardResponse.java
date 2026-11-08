@@ -4,6 +4,7 @@ package com.leave.admin.dto;
 public class AdminDashboardResponse {
 
     private long totalEmployees;
+    private long totalManagers;
     private long totalLeaveRequests;
     private long approvedLeaves;
     private long pendingLeaves;
@@ -15,6 +16,7 @@ public class AdminDashboardResponse {
 
     public AdminDashboardResponse(
             long totalEmployees,
+            long totalManagers,
             long totalLeaveRequests,
             long approvedLeaves,
             long pendingLeaves,
@@ -22,6 +24,7 @@ public class AdminDashboardResponse {
             long cancelledLeaves) {
 
         this.totalEmployees = totalEmployees;
+        this.totalManagers = totalManagers;
         this.totalLeaveRequests = totalLeaveRequests;
         this.approvedLeaves = approvedLeaves;
         this.pendingLeaves = pendingLeaves;
@@ -35,6 +38,14 @@ public class AdminDashboardResponse {
 
     public void setTotalEmployees(long totalEmployees) {
         this.totalEmployees = totalEmployees;
+    }
+
+    public long getTotalManagers() {
+        return totalManagers;
+    }
+
+    public void setTotalManagers(long totalManagers) {
+        this.totalManagers = totalManagers;
     }
 
     public long getTotalLeaveRequests() {

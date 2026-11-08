@@ -14,6 +14,7 @@ import com.leave.admin.dto.LeaveRecordResponse;
 import com.leave.admin.entity.AuditLog;
 import com.leave.admin.enums.AuditAction;
 import com.leave.admin.exception.AdminOperationException;
+import com.leave.admin.repository.EmployeeRepository;
 import com.leave.admin.service.AdminService;
 import com.leave.admin.service.AuditLogService;
 
@@ -24,9 +25,14 @@ public class AdminServiceImpl implements AdminService {
             new LinkedHashMap<>();
 
     private final AuditLogService auditLogService;
+    private final EmployeeRepository employeeRepository;
 
-    public AdminServiceImpl(AuditLogService auditLogService) {
+    public AdminServiceImpl(
+            AuditLogService auditLogService,
+            EmployeeRepository employeeRepository) {
+
         this.auditLogService = auditLogService;
+        this.employeeRepository = employeeRepository;
 
         // Temporary mock leave request data
         leaveRequests.put(501L, new LeaveRecordResponse(
@@ -51,32 +57,36 @@ public class AdminServiceImpl implements AdminService {
         ));
     }
 
-    // Retrieve all employees
+    // Retrieve all employees from database
     @Override
+    @Transactional(readOnly = true)
     public List<EmployeeResponse> getAllEmployees() {
 
-        return List.of(
-            new EmployeeResponse(
-                1001L, "Anjali", "anjali@gmail.com", "Developer"
-            ),
-            new EmployeeResponse(
-                1002L, "Rahul", "rahul@gmail.com", "Tester"
-            ),
-            new EmployeeResponse(
-                1003L, "Priya", "priya@gmail.com", "Manager"
-            )
-        );
+        return employeeRepository.findAll()
+                .stream()
+                .map(employee -> new EmployeeResponse(
+                        employee.getEmployeeId(),
+                        employee.getEmployeeName(),
+                        employee.getEmail(),
+                        employee.getDesignation(),
+                        employee.getManagerId()
+                ))
+                .toList();
     }
 
-    // Retrieve employee by ID
+    // Retrieve employee by ID from database
     @Override
+    @Transactional(readOnly = true)
     public EmployeeResponse getEmployeeById(Long employeeId) {
 
-        return getAllEmployees()
-                .stream()
-                .filter(employee ->
-                        employee.getEmployeeId().equals(employeeId))
-                .findFirst()
+        return employeeRepository.findById(employeeId)
+                .map(employee -> new EmployeeResponse(
+                        employee.getEmployeeId(),
+                        employee.getEmployeeName(),
+                        employee.getEmail(),
+                        employee.getDesignation(),
+                        employee.getManagerId()
+                ))
                 .orElseThrow(() -> new AdminOperationException(
                         "Employee not found with ID: " + employeeId
                 ));
@@ -87,6 +97,40 @@ public class AdminServiceImpl implements AdminService {
     public List<LeaveRecordResponse> getAllLeaveRequests() {
 
         return List.copyOf(leaveRequests.values());
+    }
+
+    // Retrieve leave requests by status
+    @Override
+    public List<LeaveRecordResponse> getLeaveRequestsByStatus(
+            String status) {
+
+        if (status == null || status.isBlank()) {
+            throw new AdminOperationException(
+                    "Leave status is required");
+        }
+
+        return leaveRequests.values()
+                .stream()
+                .filter(leave -> status.equalsIgnoreCase(
+                        leave.getStatus()))
+                .toList();
+    }
+
+    // Retrieve leave requests by employee ID
+    @Override
+    public List<LeaveRecordResponse> getLeaveRequestsByEmployeeId(
+            Long employeeId) {
+
+        if (employeeId == null) {
+            throw new AdminOperationException(
+                    "Employee ID is required");
+        }
+
+        return leaveRequests.values()
+                .stream()
+                .filter(leave -> employeeId.equals(
+                        leave.getEmployeeId()))
+                .toList();
     }
 
     // Retrieve leave request by ID
@@ -119,7 +163,6 @@ public class AdminServiceImpl implements AdminService {
         }
 
         String oldStatus = leave.getStatus();
-
         leave.setStatus("APPROVED");
 
         AuditLog auditLog = new AuditLog();
@@ -157,7 +200,6 @@ public class AdminServiceImpl implements AdminService {
         }
 
         String oldStatus = leave.getStatus();
-
         leave.setStatus("REJECTED");
         leave.setReason(reason);
 

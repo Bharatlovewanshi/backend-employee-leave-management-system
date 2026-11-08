@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // Handle admin operation errors
+    // Handle admin operation errors (HTTP 404)
     @ExceptionHandler(AdminOperationException.class)
     public ResponseEntity<Map<String, String>> handleAdminOperationException(
             AdminOperationException exception) {
@@ -26,7 +26,21 @@ public class GlobalExceptionHandler {
                 .body(response);
     }
 
-    // Handle request validation errors
+    // Handle conflict errors (HTTP 409)
+    @ExceptionHandler(AdminConflictException.class)
+    public ResponseEntity<Map<String, String>> handleAdminConflictException(
+            AdminConflictException exception) {
+
+        Map<String, String> response = Map.of(
+                "error", exception.getMessage()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(response);
+    }
+
+    // Handle request validation errors (HTTP 400)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> handleValidationException(
             MethodArgumentNotValidException exception) {

@@ -20,6 +20,12 @@ public interface AdminService {
     // Retrieve leave request by ID
     LeaveRecordResponse getLeaveRequestById(Long leaveId);
 
+    // Retrieve leave requests by status
+    List<LeaveRecordResponse> getLeaveRequestsByStatus(String status);
+
+    // Retrieve leave requests by employee ID
+    List<LeaveRecordResponse> getLeaveRequestsByEmployeeId(Long employeeId);
+
     // Approve leave request
     LeaveRecordResponse approveLeaveRequest(
             Long leaveId, Long adminUserId);

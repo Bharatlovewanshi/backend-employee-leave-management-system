@@ -17,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.leave.admin.dto.AdminDashboardResponse;
 import com.leave.admin.dto.EmployeeResponse;
 import com.leave.admin.dto.LeaveRecordResponse;
+import com.leave.admin.repository.ManagerRepository;
 import com.leave.admin.service.AdminService;
 import com.leave.admin.service.impl.AdminDashboardServiceImpl;
 
@@ -26,6 +27,9 @@ class AdminDashboardServiceImplTest {
     @Mock
     private AdminService adminService;
 
+    @Mock
+    private ManagerRepository managerRepository;
+
     @InjectMocks
     private AdminDashboardServiceImpl dashboardService;
 
@@ -33,12 +37,15 @@ class AdminDashboardServiceImplTest {
     void setUp() {
 
         List<EmployeeResponse> employees = List.of(
-                new EmployeeResponse(1001L, "Anjali",
-                        "anjali@gmail.com", "Developer"),
-                new EmployeeResponse(1002L, "Rahul",
-                        "rahul@gmail.com", "Tester"),
-                new EmployeeResponse(1003L, "Priya",
-                        "priya@gmail.com", "Manager")
+                new EmployeeResponse(
+                        1001L, "Anjali",
+                        "anjali@gmail.com", "Developer", null),
+                new EmployeeResponse(
+                        1002L, "Rahul",
+                        "rahul@gmail.com", "Tester", null),
+                new EmployeeResponse(
+                        1003L, "Priya",
+                        "priya@gmail.com", "Manager", null)
         );
 
         List<LeaveRecordResponse> leaves = List.of(
@@ -56,8 +63,15 @@ class AdminDashboardServiceImplTest {
                 )
         );
 
-        when(adminService.getAllEmployees()).thenReturn(employees);
-        when(adminService.getAllLeaveRequests()).thenReturn(leaves);
+        when(adminService.getAllEmployees())
+                .thenReturn(employees);
+
+        when(adminService.getAllLeaveRequests())
+                .thenReturn(leaves);
+
+        // Mock total manager count
+        when(managerRepository.count())
+                .thenReturn(2L);
     }
 
     @Test
@@ -69,7 +83,9 @@ class AdminDashboardServiceImplTest {
         assertNotNull(response);
 
         assertEquals(3, response.getTotalEmployees());
+        assertEquals(2, response.getTotalManagers());
         assertEquals(3, response.getTotalLeaveRequests());
+
         assertEquals(1, response.getApprovedLeaves());
         assertEquals(1, response.getPendingLeaves());
         assertEquals(1, response.getRejectedLeaves());
