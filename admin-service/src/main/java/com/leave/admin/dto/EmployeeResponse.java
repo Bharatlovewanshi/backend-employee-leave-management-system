@@ -7,16 +7,19 @@ public class EmployeeResponse {
     private String employeeName;
     private String email;
     private String designation;
+    private Long managerId;
 
     public EmployeeResponse() {
     }
 
     public EmployeeResponse(Long employeeId, String employeeName,
-            String email, String designation) {
+            String email, String designation, Long managerId) {
+
         this.employeeId = employeeId;
         this.employeeName = employeeName;
         this.email = email;
         this.designation = designation;
+        this.managerId = managerId;
     }
 
     public Long getEmployeeId() {
@@ -49,5 +52,13 @@ public class EmployeeResponse {
 
     public void setDesignation(String designation) {
         this.designation = designation;
+    }
+
+    public Long getManagerId() {
+        return managerId;
+    }
+
+    public void setManagerId(Long managerId) {
+        this.managerId = managerId;
     }
 }
