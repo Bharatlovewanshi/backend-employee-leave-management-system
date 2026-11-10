@@ -47,4 +47,8 @@ public class ManagerDecisionResponse {
      * Date and time when the decision was made.
      */
     private LocalDateTime decisionAt;
+    
+    private Long employeeId;
+
+    private String employeeName;
 }

@@ -72,4 +72,11 @@ public interface NotificationLogRepository
             Long id,
             Long employeeId,
             NotificationType notificationType);
+    
+    /**
+     * Retrieves notification logs belonging to a specific manager,
+     * newest notifications first.
+     */
+    List<NotificationLog>
+    findByManagerDecision_ManagerIdOrderByCreatedAtDesc(Long managerId);
 }

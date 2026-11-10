@@ -1,3 +1,4 @@
+
 package com.leave.manager.entity;
 
 import java.time.LocalDateTime;
@@ -48,8 +49,8 @@ public class NotificationLog {
     @Enumerated(EnumType.STRING)
     @Column(name = "notification_type", nullable = false, length = 20)
     private NotificationType notificationType;
-    
-    @Column(name = "message", length = 500)
+
+    @Column(name = "message", length = 2000)
     private String message;
 
     @Enumerated(EnumType.STRING)
@@ -64,13 +65,16 @@ public class NotificationLog {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-    
+
     @Column(name = "is_read", nullable = false)
     private Boolean isRead = false;
 
-    
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+
+        if (this.isRead == null) {
+            this.isRead = false;
+        }
     }
 }

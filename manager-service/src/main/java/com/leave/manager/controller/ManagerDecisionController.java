@@ -1,9 +1,12 @@
+
 package com.leave.manager.controller;
 
 import java.util.List;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import com.leave.manager.dto.request.ManagerDecisionRequest;
@@ -17,9 +20,8 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * REST controller for managing employee leave approval and rejection.
- * Provides APIs for processing manager decisions and retrieving leave requests.
  */
-@CrossOrigin(origins = "http://localhost:5173")
+@Validated
 @RestController
 @RequestMapping("/api/manager/decisions")
 @RequiredArgsConstructor
@@ -28,17 +30,18 @@ public class ManagerDecisionController {
     private final ManagerDecisionService managerDecisionService;
 
     /**
-     * Processes a manager's decision to approve or reject a leave request.
-     *
-     * @param request manager decision details
-     * @return API response containing the saved decision
+     * Processes a manager's decision.
      */
     @PostMapping
     public ResponseEntity<ApiResponse<ManagerDecisionResponse>> processDecision(
-            @Valid @RequestBody ManagerDecisionRequest request) {
+            @Valid @RequestBody ManagerDecisionRequest request,
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization) {
 
         ManagerDecisionResponse response =
-                managerDecisionService.processDecision(request);
+                managerDecisionService.processDecision(
+                        request,
+                        authorization
+                );
 
         ApiResponse<ManagerDecisionResponse> apiResponse =
                 new ApiResponse<>(
@@ -47,21 +50,21 @@ public class ManagerDecisionController {
                         response
                 );
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(apiResponse);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(apiResponse);
     }
 
     /**
-     * Retrieves all pending leave requests assigned to a manager.
-     *
-     * @param managerId unique ID of the manager
-     * @return API response containing pending leave requests
+     * Retrieves pending leave requests for the authenticated manager.
      */
-    @GetMapping("/pending/{managerId}")
+    @GetMapping("/pending")
     public ResponseEntity<ApiResponse<List<PendingLeaveResponse>>> getPendingLeaveRequests(
-            @PathVariable("managerId") Long managerId) {
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization) {
 
         List<PendingLeaveResponse> response =
-                managerDecisionService.getPendingLeaveRequests(managerId);
+                managerDecisionService.getPendingLeaveRequests(
+                        authorization
+                );
 
         ApiResponse<List<PendingLeaveResponse>> apiResponse =
                 new ApiResponse<>(
@@ -74,22 +77,21 @@ public class ManagerDecisionController {
     }
 
     /**
-     * Retrieves all leave decisions made by a specific manager.
-     *
-     * @param managerId unique ID of the manager
-     * @return API response containing manager decisions
+     * Retrieves decision history for the authenticated manager only.
      */
-    @GetMapping("/manager/{managerId}")
+    @GetMapping("/history")
     public ResponseEntity<ApiResponse<List<ManagerDecisionResponse>>> getManagerDecisions(
-            @PathVariable("managerId") Long managerId) {
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization) {
 
         List<ManagerDecisionResponse> response =
-                managerDecisionService.getManagerDecisions(managerId);
+                managerDecisionService.getManagerDecisions(
+                        authorization
+                );
 
         ApiResponse<List<ManagerDecisionResponse>> apiResponse =
                 new ApiResponse<>(
                         true,
-                        "Manager decisions retrieved successfully",
+                        "Manager decision history retrieved successfully",
                         response
                 );
 
