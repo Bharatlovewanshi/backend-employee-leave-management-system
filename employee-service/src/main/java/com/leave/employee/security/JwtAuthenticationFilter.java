@@ -15,6 +15,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -106,9 +107,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                     logger.info("JWT authentication successful for: {}", email);
 
+                    // DEBUG LOG 1: Check assigned roles
+                    logger.info(
+                            "Authenticated authorities: {}",
+                            SecurityContextHolder.getContext()
+                                    .getAuthentication()
+                                    .getAuthorities()
+                    );
+
                 } else {
 
                     logger.warn("JWT token validation failed");
+
                 }
             }
 
@@ -121,6 +131,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     exception.getMessage()
             );
         }
+
+        // DEBUG LOG 2: Check authentication before continuing
+        logger.info(
+                "Before continuing filter chain, authentication: {}",
+                SecurityContextHolder.getContext().getAuthentication()
+        );
 
         filterChain.doFilter(request, response);
     }
