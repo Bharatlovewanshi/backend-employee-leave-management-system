@@ -57,4 +57,6 @@ public interface NotificationService {
      * @param employeeId employee ID
      */
     void markNotificationAsRead(Long notificationId, Long employeeId);
+    
+    List<NotificationResponse> getManagerNotifications(Long managerId);
 }

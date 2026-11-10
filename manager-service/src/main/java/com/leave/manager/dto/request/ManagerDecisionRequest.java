@@ -1,8 +1,10 @@
+
 package com.leave.manager.dto.request;
 
 import com.leave.manager.enums.DecisionType;
 
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 import lombok.AllArgsConstructor;
@@ -11,7 +13,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Request DTO for submitting a manager's leave approval or rejection decision.
+ * Request DTO for submitting a manager's leave approval
+ * or rejection decision.
  */
 @Getter
 @Setter
@@ -23,13 +26,8 @@ public class ManagerDecisionRequest {
      * Unique ID of the employee leave request.
      */
     @NotNull(message = "Leave request ID is required")
+    @Positive(message = "Leave request ID must be greater than zero")
     private Long leaveRequestId;
-
-    /**
-     * Unique ID of the manager making the decision.
-     */
-    @NotNull(message = "Manager ID is required")
-    private Long managerId;
 
     /**
      * Decision made by the manager (APPROVED or REJECTED).
