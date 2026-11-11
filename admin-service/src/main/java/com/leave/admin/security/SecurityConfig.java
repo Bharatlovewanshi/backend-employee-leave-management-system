@@ -28,7 +28,6 @@ public class SecurityConfig {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
-    // Authentication Manager
     @Bean
     public AuthenticationManager authenticationManager(
             AuthenticationConfiguration configuration) throws Exception {
@@ -42,7 +41,10 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
 
         configuration.setAllowedOrigins(
-                List.of("http://localhost:5173"));
+                List.of(
+                    "http://localhost:5173",
+                    "http://localhost:8085"
+                ));
 
         configuration.setAllowedMethods(
                 List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
@@ -62,34 +64,27 @@ public class SecurityConfig {
         return source;
     }
 
-    // Security Filter Chain
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http) throws Exception {
 
         http
-            // Enable CORS
             .cors(cors -> cors.configurationSource(
                     corsConfigurationSource()))
 
-            // Disable CSRF
             .csrf(csrf -> csrf.disable())
 
-            // Stateless JWT authentication
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-            // API authorization rules
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/login").permitAll()
                 .anyRequest().hasRole("ADMIN"))
 
-            // Return 401 for unauthorized requests
             .exceptionHandling(exception -> exception
                 .authenticationEntryPoint(
                     new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
 
-            // Register JWT filter
             .addFilterBefore(
                 jwtAuthenticationFilter,
                 UsernamePasswordAuthenticationFilter.class);
