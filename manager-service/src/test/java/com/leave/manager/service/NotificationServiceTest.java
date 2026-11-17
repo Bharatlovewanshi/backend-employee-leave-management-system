@@ -1,7 +1,8 @@
+
 package com.leave.manager.service;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import java.time.LocalDateTime;
@@ -38,13 +39,15 @@ class NotificationServiceTest {
     @InjectMocks
     private NotificationServiceImpl notificationService;
 
-    // Common test decision
     private ManagerDecision createDecision() {
+
         ManagerDecision decision = new ManagerDecision();
+
         decision.setId(1L);
         decision.setLeaveRequestId(105L);
         decision.setManagerId(301L);
         decision.setDecision(DecisionType.APPROVED);
+
         return decision;
     }
 
@@ -62,17 +65,18 @@ class NotificationServiceTest {
                 "Your leave request has been approved."
         );
 
-        verify(notificationLogRepository).saveAndFlush(
-                any(NotificationLog.class));
+        verify(notificationLogRepository)
+                .saveAndFlush(any(NotificationLog.class));
 
-        verify(javaMailSender).send(
-                any(SimpleMailMessage.class));
+        verify(javaMailSender)
+                .send(any(SimpleMailMessage.class));
 
         verify(notificationLogRepository).save(
                 argThat(log ->
                         log.getNotificationStatus() == NotificationStatus.SENT
                         && log.getNotificationType() == NotificationType.EMAIL
                         && log.getEmployeeId().equals(205L)
+                        && log.getManagerId() == null
                 )
         );
     }
@@ -83,7 +87,8 @@ class NotificationServiceTest {
 
         ManagerDecision decision = createDecision();
 
-        doThrow(new MailAuthenticationException("SMTP authentication failed"))
+        doThrow(new MailAuthenticationException(
+                "SMTP authentication failed"))
                 .when(javaMailSender)
                 .send(any(SimpleMailMessage.class));
 
@@ -95,21 +100,22 @@ class NotificationServiceTest {
                 "Your leave request has been approved."
         );
 
-        verify(notificationLogRepository).saveAndFlush(
-                any(NotificationLog.class));
+        verify(notificationLogRepository)
+                .saveAndFlush(any(NotificationLog.class));
 
         verify(notificationLogRepository).save(
                 argThat(log ->
                         log.getNotificationStatus() == NotificationStatus.FAILED
                         && log.getNotificationType() == NotificationType.EMAIL
+                        && log.getEmployeeId().equals(205L)
                         && log.getErrorMessage() != null
                 )
         );
     }
 
-    // Test 3: Successful in-app notification
+    // Test 3: Successful employee in-app notification
     @Test
-    void shouldCreateInAppNotificationSuccessfully() {
+    void shouldCreateEmployeeInAppNotificationSuccessfully() {
 
         ManagerDecision decision = createDecision();
 
@@ -126,27 +132,35 @@ class NotificationServiceTest {
                         && log.getNotificationType() == NotificationType.IN_APP
                         && log.getNotificationStatus() == NotificationStatus.SENT
                         && Boolean.FALSE.equals(log.getIsRead())
+                        && log.getManagerId() == null
+                        && log.getManagerDecision() == decision
                 )
         );
     }
 
-    // Test 4: Retrieve employee notifications
+    // Test 4: Retrieve only employee notifications
     @Test
     void shouldRetrieveEmployeeNotifications() {
 
         NotificationLog notification = new NotificationLog();
+
         notification.setId(10L);
         notification.setLeaveRequestId(105L);
         notification.setEmployeeId(205L);
+        notification.setManagerId(null);
         notification.setNotificationType(NotificationType.IN_APP);
         notification.setNotificationStatus(NotificationStatus.SENT);
-        notification.setMessage("Your leave request has been approved.");
+        notification.setMessage(
+                "Your leave request has been approved."
+        );
         notification.setIsRead(false);
         notification.setCreatedAt(LocalDateTime.now());
 
         when(notificationLogRepository
-                .findByEmployeeIdAndNotificationTypeOrderByCreatedAtDesc(
-                        205L, NotificationType.IN_APP))
+                .findByEmployeeIdAndManagerIdIsNullAndNotificationTypeOrderByCreatedAtDesc(
+                        205L,
+                        NotificationType.IN_APP
+                ))
                 .thenReturn(List.of(notification));
 
         List<NotificationResponse> response =
@@ -157,20 +171,29 @@ class NotificationServiceTest {
         assertEquals(10L, response.get(0).getId());
         assertEquals(105L, response.get(0).getLeaveRequestId());
         assertEquals(205L, response.get(0).getEmployeeId());
-        assertEquals(NotificationType.IN_APP,
-                response.get(0).getNotificationType());
+        assertEquals(
+                NotificationType.IN_APP,
+                response.get(0).getNotificationType()
+        );
         assertFalse(response.get(0).getIsRead());
+
+        verify(notificationLogRepository)
+                .findByEmployeeIdAndManagerIdIsNullAndNotificationTypeOrderByCreatedAtDesc(
+                        205L,
+                        NotificationType.IN_APP
+                );
     }
 
-    // Test 5: Retrieve unread notification count
+    // Test 5: Retrieve unread employee notification count
     @Test
     void shouldGetUnreadNotificationCount() {
 
         when(notificationLogRepository
-                .countByEmployeeIdAndNotificationTypeAndNotificationStatusAndIsReadFalse(
+                .countByEmployeeIdAndManagerIdIsNullAndNotificationTypeAndNotificationStatusAndIsReadFalse(
                         205L,
                         NotificationType.IN_APP,
-                        NotificationStatus.SENT))
+                        NotificationStatus.SENT
+                ))
                 .thenReturn(3L);
 
         long count =
@@ -178,27 +201,33 @@ class NotificationServiceTest {
 
         assertEquals(3L, count);
 
-        verify(notificationLogRepository).countByEmployeeIdAndNotificationTypeAndNotificationStatusAndIsReadFalse(
-                205L,
-                NotificationType.IN_APP,
-                NotificationStatus.SENT
-        );
+        verify(notificationLogRepository)
+                .countByEmployeeIdAndManagerIdIsNullAndNotificationTypeAndNotificationStatusAndIsReadFalse(
+                        205L,
+                        NotificationType.IN_APP,
+                        NotificationStatus.SENT
+                );
     }
 
-    // Test 6: Mark notification as read
+    // Test 6: Mark employee notification as read
     @Test
-    void shouldMarkNotificationAsRead() {
+    void shouldMarkEmployeeNotificationAsRead() {
 
         NotificationLog notification = new NotificationLog();
+
         notification.setId(10L);
         notification.setEmployeeId(205L);
+        notification.setManagerId(null);
         notification.setNotificationType(NotificationType.IN_APP);
         notification.setNotificationStatus(NotificationStatus.SENT);
         notification.setIsRead(false);
 
         when(notificationLogRepository
-                .findByIdAndEmployeeIdAndNotificationType(
-                        10L, 205L, NotificationType.IN_APP))
+                .findByIdAndEmployeeIdAndManagerIdIsNullAndNotificationType(
+                        10L,
+                        205L,
+                        NotificationType.IN_APP
+                ))
                 .thenReturn(Optional.of(notification));
 
         notificationService.markNotificationAsRead(10L, 205L);
@@ -208,19 +237,167 @@ class NotificationServiceTest {
         verify(notificationLogRepository).save(notification);
     }
 
-    // Test 7: Invalid notification ID
+    // Test 7: Invalid employee notification ID
     @Test
-    void shouldThrowExceptionWhenNotificationDoesNotExist() {
+    void shouldThrowExceptionWhenEmployeeNotificationDoesNotExist() {
 
         when(notificationLogRepository
-                .findByIdAndEmployeeIdAndNotificationType(
-                        999L, 205L, NotificationType.IN_APP))
+                .findByIdAndEmployeeIdAndManagerIdIsNullAndNotificationType(
+                        999L,
+                        205L,
+                        NotificationType.IN_APP
+                ))
                 .thenReturn(Optional.empty());
 
         assertThrows(
                 InvalidDecisionException.class,
                 () -> notificationService.markNotificationAsRead(
-                        999L, 205L)
+                        999L,
+                        205L
+                )
+        );
+
+        verify(notificationLogRepository, never())
+                .save(any(NotificationLog.class));
+    }
+
+    // Test 8: Create manager notification for new leave application
+    @Test
+    void shouldCreateManagerNotificationForLeaveApplication() {
+
+        notificationService.createManagerLeaveEvent(
+                301L,
+                205L,
+                105L,
+                "LEAVE_APPLIED",
+                "Employee has submitted a new leave request."
+        );
+
+        verify(notificationLogRepository).save(
+                argThat(log ->
+                        log.getManagerId().equals(301L)
+                        && log.getEmployeeId().equals(205L)
+                        && log.getLeaveRequestId().equals(105L)
+                        && log.getManagerDecision() == null
+                        && log.getNotificationType() == NotificationType.IN_APP
+                        && log.getNotificationStatus() == NotificationStatus.SENT
+                        && Boolean.FALSE.equals(log.getIsRead())
+                )
+        );
+    }
+
+    // Test 9: Create manager notification for leave cancellation
+    @Test
+    void shouldCreateManagerNotificationForLeaveCancellation() {
+
+        notificationService.createManagerLeaveEvent(
+                301L,
+                205L,
+                105L,
+                "LEAVE_CANCELLED",
+                "Employee has cancelled a leave request."
+        );
+
+        verify(notificationLogRepository).save(
+                argThat(log ->
+                        log.getManagerId().equals(301L)
+                        && log.getEmployeeId().equals(205L)
+                        && log.getLeaveRequestId().equals(105L)
+                        && log.getManagerDecision() == null
+                        && log.getNotificationType() == NotificationType.IN_APP
+                        && log.getNotificationStatus() == NotificationStatus.SENT
+                        && Boolean.FALSE.equals(log.getIsRead())
+                )
+        );
+    }
+
+    // Test 10: Retrieve manager notifications
+    @Test
+    void shouldRetrieveManagerNotifications() {
+
+        NotificationLog notification = new NotificationLog();
+
+        notification.setId(20L);
+        notification.setManagerId(301L);
+        notification.setEmployeeId(205L);
+        notification.setLeaveRequestId(105L);
+        notification.setManagerDecision(null);
+        notification.setNotificationType(NotificationType.IN_APP);
+        notification.setNotificationStatus(NotificationStatus.SENT);
+        notification.setMessage(
+                "Employee has submitted a new leave request."
+        );
+        notification.setIsRead(false);
+        notification.setCreatedAt(LocalDateTime.now());
+
+        when(notificationLogRepository
+                .findByManagerIdAndNotificationTypeAndNotificationStatusOrderByCreatedAtDesc(
+                        301L,
+                        NotificationType.IN_APP,
+                        NotificationStatus.SENT
+                ))
+                .thenReturn(List.of(notification));
+
+        List<NotificationResponse> response =
+                notificationService.getManagerNotifications(301L);
+
+        assertNotNull(response);
+        assertEquals(1, response.size());
+        assertEquals(20L, response.get(0).getId());
+        assertEquals(105L, response.get(0).getLeaveRequestId());
+        assertEquals(205L, response.get(0).getEmployeeId());
+        assertEquals(
+                NotificationType.IN_APP,
+                response.get(0).getNotificationType()
+        );
+    }
+
+    // Test 11: Mark manager notification as read
+    @Test
+    void shouldMarkManagerNotificationAsRead() {
+
+        NotificationLog notification = new NotificationLog();
+
+        notification.setId(20L);
+        notification.setManagerId(301L);
+        notification.setEmployeeId(205L);
+        notification.setNotificationType(NotificationType.IN_APP);
+        notification.setNotificationStatus(NotificationStatus.SENT);
+        notification.setIsRead(false);
+
+        when(notificationLogRepository
+                .findByIdAndManagerIdAndNotificationType(
+                        20L,
+                        301L,
+                        NotificationType.IN_APP
+                ))
+                .thenReturn(Optional.of(notification));
+
+        notificationService.markManagerNotificationAsRead(20L, 301L);
+
+        assertTrue(notification.getIsRead());
+
+        verify(notificationLogRepository).save(notification);
+    }
+
+    // Test 12: Manager cannot mark another manager's notification as read
+    @Test
+    void shouldNotAllowManagerToReadAnotherManagersNotification() {
+
+        when(notificationLogRepository
+                .findByIdAndManagerIdAndNotificationType(
+                        20L,
+                        999L,
+                        NotificationType.IN_APP
+                ))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                InvalidDecisionException.class,
+                () -> notificationService.markManagerNotificationAsRead(
+                        20L,
+                        999L
+                )
         );
 
         verify(notificationLogRepository, never())

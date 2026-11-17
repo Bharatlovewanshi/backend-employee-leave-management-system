@@ -36,8 +36,10 @@ public class NotificationLog {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "manager_decision_id", nullable = false)
+    // Nullable because employee apply/cancel events
+    // do not have a ManagerDecision.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "manager_decision_id", nullable = true)
     private ManagerDecision managerDecision;
 
     @Column(name = "leave_request_id", nullable = false)
@@ -45,6 +47,11 @@ public class NotificationLog {
 
     @Column(name = "employee_id", nullable = false)
     private Long employeeId;
+
+    // Manager recipient ID.
+    // NULL for employee-facing notifications.
+    @Column(name = "manager_id")
+    private Long managerId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "notification_type", nullable = false, length = 20)
@@ -71,6 +78,7 @@ public class NotificationLog {
 
     @PrePersist
     protected void onCreate() {
+
         this.createdAt = LocalDateTime.now();
 
         if (this.isRead == null) {

@@ -6,57 +6,46 @@ import java.util.List;
 import com.leave.manager.dto.response.NotificationResponse;
 import com.leave.manager.entity.ManagerDecision;
 
-/**
- * Service interface for managing employee notifications.
- *
- * Supports email and in-app notifications.
- */
 public interface NotificationService {
 
-    /**
-     * Sends an email notification to an employee.
-     *
-     * @param decision manager decision details
-     * @param employeeId employee receiving the notification
-     * @param recipientEmail employee email address
-     * @param subject email subject
-     * @param message email content
-     */
-    void sendEmail(ManagerDecision decision, Long employeeId,
-            String recipientEmail, String subject, String message);
+    void sendEmail(
+            ManagerDecision decision,
+            Long employeeId,
+            String recipientEmail,
+            String subject,
+            String message
+    );
 
-    /**
-     * Creates an in-app notification for an employee.
-     *
-     * @param decision manager decision details
-     * @param employeeId employee receiving the notification
-     * @param message notification content
-     */
-    void sendInAppNotification(ManagerDecision decision, Long employeeId, String message);
+    void sendInAppNotification(
+            ManagerDecision decision,
+            Long employeeId,
+            String message
+    );
 
-    /**
-     * Retrieves all sent in-app notifications for an employee.
-     *
-     * @param employeeId employee ID
-     * @return list of employee notifications
-     */
+    // Employee notification operations
     List<NotificationResponse> getEmployeeNotifications(Long employeeId);
 
-    /**
-     * Retrieves the unread in-app notification count for an employee.
-     *
-     * @param employeeId employee ID
-     * @return unread notification count
-     */
     long getUnreadNotificationCount(Long employeeId);
 
-    /**
-     * Marks an employee's in-app notification as read.
-     *
-     * @param notificationId notification ID
-     * @param employeeId employee ID
-     */
-    void markNotificationAsRead(Long notificationId, Long employeeId);
-    
+    void markNotificationAsRead(
+            Long notificationId,
+            Long employeeId
+    );
+
+    // Manager notification operations
     List<NotificationResponse> getManagerNotifications(Long managerId);
+
+    void markManagerNotificationAsRead(
+            Long notificationId,
+            Long managerId
+    );
+
+    // Create a manager notification for employee leave events
+    void createManagerLeaveEvent(
+            Long managerId,
+            Long employeeId,
+            Long leaveRequestId,
+            String eventType,
+            String message
+    );
 }

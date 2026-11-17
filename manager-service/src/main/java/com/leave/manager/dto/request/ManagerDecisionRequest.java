@@ -15,6 +15,9 @@ import lombok.Setter;
 /**
  * Request DTO for submitting a manager's leave approval
  * or rejection decision.
+ *
+ * The manager ID is resolved from the authenticated JWT
+ * and is not accepted from the client request.
  */
 @Getter
 @Setter

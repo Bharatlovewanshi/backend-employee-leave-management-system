@@ -11,72 +11,68 @@ import com.leave.manager.entity.NotificationLog;
 import com.leave.manager.enums.NotificationStatus;
 import com.leave.manager.enums.NotificationType;
 
-/**
- * Repository interface for managing NotificationLog entities.
- * Provides database operations and custom query methods
- * for tracking employee notifications.
- */
 @Repository
 public interface NotificationLogRepository
         extends JpaRepository<NotificationLog, Long> {
 
-    /**
-     * Retrieves all notification logs for a specific leave request.
-     */
+    // Find all notification logs for a leave request.
     List<NotificationLog> findByLeaveRequestId(Long leaveRequestId);
 
-    /**
-     * Retrieves all notification logs for a specific employee.
-     */
+    // Find all notification logs for an employee.
     List<NotificationLog> findByEmployeeId(Long employeeId);
 
-    /**
-     * Retrieves notification logs based on delivery status.
-     */
+    // Find notifications by delivery status.
     List<NotificationLog> findByNotificationStatus(
-            NotificationStatus notificationStatus);
+            NotificationStatus notificationStatus
+    );
 
-    /**
-     * Retrieves notification logs based on notification type.
-     */
+    // Find notifications by type.
     List<NotificationLog> findByNotificationType(
-            NotificationType notificationType);
+            NotificationType notificationType
+    );
 
-    /**
-     * Retrieves notification logs for an employee and delivery status.
-     */
+    // Find employee notifications by delivery status.
     List<NotificationLog> findByEmployeeIdAndNotificationStatus(
             Long employeeId,
-            NotificationStatus notificationStatus);
+            NotificationStatus notificationStatus
+    );
 
-    /**
-     * Retrieves all in-app notifications for an employee,
-     * newest notifications first.
-     */
-    List<NotificationLog> findByEmployeeIdAndNotificationTypeOrderByCreatedAtDesc(
+    // Employee-facing in-app notifications only.
+    // managerId must be NULL.
+    List<NotificationLog>
+    findByEmployeeIdAndManagerIdIsNullAndNotificationTypeOrderByCreatedAtDesc(
             Long employeeId,
-            NotificationType notificationType);
+            NotificationType notificationType
+    );
 
-    /**
-     * Counts unread, successfully delivered in-app notifications.
-     */
-    long countByEmployeeIdAndNotificationTypeAndNotificationStatusAndIsReadFalse(
+    // Count unread employee-facing notifications only.
+    long countByEmployeeIdAndManagerIdIsNullAndNotificationTypeAndNotificationStatusAndIsReadFalse(
             Long employeeId,
             NotificationType notificationType,
-            NotificationStatus notificationStatus);
+            NotificationStatus notificationStatus
+    );
 
-    /**
-     * Retrieves a specific in-app notification belonging to an employee.
-     */
-    Optional<NotificationLog> findByIdAndEmployeeIdAndNotificationType(
+    // Find a specific employee-facing notification.
+    Optional<NotificationLog>
+    findByIdAndEmployeeIdAndManagerIdIsNullAndNotificationType(
             Long id,
             Long employeeId,
-            NotificationType notificationType);
-    
-    /**
-     * Retrieves notification logs belonging to a specific manager,
-     * newest notifications first.
-     */
+            NotificationType notificationType
+    );
+
+    // Manager-facing in-app notifications only.
     List<NotificationLog>
-    findByManagerDecision_ManagerIdOrderByCreatedAtDesc(Long managerId);
+    findByManagerIdAndNotificationTypeAndNotificationStatusOrderByCreatedAtDesc(
+            Long managerId,
+            NotificationType notificationType,
+            NotificationStatus notificationStatus
+    );
+
+    // Find a specific notification belonging to a manager.
+    Optional<NotificationLog>
+    findByIdAndManagerIdAndNotificationType(
+            Long id,
+            Long managerId,
+            NotificationType notificationType
+    );
 }
