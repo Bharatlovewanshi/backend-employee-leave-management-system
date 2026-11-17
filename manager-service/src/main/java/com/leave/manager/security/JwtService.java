@@ -1,6 +1,9 @@
 
 package com.leave.manager.security;
 
+import jakarta.annotation.PostConstruct;
+import java.security.MessageDigest;
+import java.util.HexFormat;
 import java.util.Set;
 
 import javax.crypto.SecretKey;
@@ -127,5 +130,29 @@ public class JwtService {
         }
 
         return userId;
+    }
+    
+    @PostConstruct
+    public void checkJwtSecret() {
+        try {
+            byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+
+            byte[] hash = MessageDigest
+                    .getInstance("SHA-256")
+                    .digest(keyBytes);
+
+            String fingerprint = HexFormat.of()
+                    .formatHex(hash)
+                    .substring(0, 16);
+
+            System.out.println(
+                    "JWT SECRET FINGERPRINT: " + fingerprint
+            );
+
+        } catch (Exception e) {
+            throw new IllegalStateException(
+                    "Unable to verify JWT secret configuration", e
+            );
+        }
     }
 }

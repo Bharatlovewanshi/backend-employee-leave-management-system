@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Objects;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +34,7 @@ public class ManagerDecisionServiceImpl implements ManagerDecisionService {
     private final EmployeeServiceClient employeeServiceClient;
     private final NotificationService notificationService;
     private final JwtService jwtService;
+    private final JdbcTemplate jdbcTemplate;
 
     /**
      * Processes manager approval or rejection.
@@ -45,7 +48,7 @@ public class ManagerDecisionServiceImpl implements ManagerDecisionService {
         // 1. Validate request
         validateRequest(request);
 
-        // 2. Extract authenticated manager identity
+        // 2. Extract actual manager ID from database
         Long managerId = extractManagerId(authorization);
 
         Long leaveRequestId = request.getLeaveRequestId();
@@ -373,6 +376,7 @@ public class ManagerDecisionServiceImpl implements ManagerDecisionService {
     public List<PendingLeaveResponse> getPendingLeaveRequests(
             String authorization) {
 
+        // Validate manager identity
         extractManagerId(authorization);
 
         try {
@@ -415,7 +419,10 @@ public class ManagerDecisionServiceImpl implements ManagerDecisionService {
     }
 
     /**
-     * Extracts and validates manager identity from JWT.
+     * Extracts the actual manager ID from admin_managers
+     * using the email present in the authenticated JWT.
+     *
+     * JWT userId is not the same as admin_managers.manager_id.
      */
     private Long extractManagerId(String authorization) {
 
@@ -430,8 +437,9 @@ public class ManagerDecisionServiceImpl implements ManagerDecisionService {
 
         try {
 
-            String token = authorization.substring(7);
+            String token = authorization.substring(7).trim();
 
+            // Validate JWT signature, expiration and claims.
             if (!jwtService.isTokenValid(token)
                     || !"MANAGER".equals(jwtService.extractRole(token))) {
 
@@ -440,14 +448,35 @@ public class ManagerDecisionServiceImpl implements ManagerDecisionService {
                 );
             }
 
-            Long managerId = jwtService.extractUserId(token);
+            // Extract email from JWT subject.
+            String email = jwtService.extractEmail(token);
+
+            if (email == null || email.isBlank()) {
+
+                throw new InvalidDecisionException(
+                        "Manager email is missing from authentication token"
+                );
+            }
+
+            // Resolve manager_id using manager email.
+            Long managerId = jdbcTemplate.queryForObject(
+                    "SELECT manager_id FROM admin_managers WHERE email = ?",
+                    Long.class,
+                    email
+            );
 
             if (managerId == null || managerId <= 0) {
 
                 throw new InvalidDecisionException(
-                        "Invalid manager identity"
+                        "Invalid manager ID"
                 );
             }
+
+            log.info(
+                    "Authenticated manager resolved: email={}, managerId={}",
+                    email,
+                    managerId
+            );
 
             return managerId;
 
@@ -455,10 +484,21 @@ public class ManagerDecisionServiceImpl implements ManagerDecisionService {
 
             throw exception;
 
-        } catch (Exception exception) {
+        } catch (EmptyResultDataAccessException exception) {
 
             throw new InvalidDecisionException(
-                    "Invalid or expired authentication token"
+                    "Manager profile not found for authenticated email"
+            );
+
+        } catch (Exception exception) {
+
+            log.error(
+                    "Failed to resolve manager identity",
+                    exception
+            );
+
+            throw new InvalidDecisionException(
+                    "Invalid authentication token or manager profile"
             );
         }
     }
@@ -466,41 +506,47 @@ public class ManagerDecisionServiceImpl implements ManagerDecisionService {
     /**
      * Converts entity into response DTO.
      */
-    private ManagerDecisionResponse mapToResponse(
-            ManagerDecision decision,
-            String authorization) {
+private ManagerDecisionResponse mapToResponse(
+        ManagerDecision decision,
+        String authorization) {
 
-        ManagerDecisionResponse response =
-                new ManagerDecisionResponse();
+    ManagerDecisionResponse response = new ManagerDecisionResponse();
 
-        response.setId(decision.getId());
-        response.setLeaveRequestId(decision.getLeaveRequestId());
-        response.setManagerId(decision.getManagerId());
-        response.setDecision(decision.getDecision());
-        response.setRejectionReason(decision.getRejectionReason());
-        response.setDecisionAt(decision.getDecisionAt());
+    response.setId(decision.getId());
+    response.setLeaveRequestId(decision.getLeaveRequestId());
+    response.setManagerId(decision.getManagerId());
+    response.setDecision(decision.getDecision());
+    response.setRejectionReason(decision.getRejectionReason());
+    response.setDecisionAt(decision.getDecisionAt());
 
-        try {
-            PendingLeaveResponse leave =
-                    employeeServiceClient.getLeaveDetails(
-                            decision.getLeaveRequestId(),
-                            authorization
-                    );
+    try {
+        PendingLeaveResponse leave =
+                employeeServiceClient.getLeaveDetails(
+                        decision.getLeaveRequestId(),
+                        authorization
+                );
 
-            if (leave != null) {
-                response.setEmployeeId(leave.getEmployeeId());
-                response.setEmployeeName(leave.getEmployeeName());
-            }
-
-        } catch (FeignException exception) {
-            log.error(
-                    "Unable to fetch employee details for leave request {}. HTTP status: {}",
-                    decision.getLeaveRequestId(),
-                    exception.status(),
-                    exception
-            );
+        if (leave != null) {
+            response.setEmployeeId(leave.getEmployeeId());
+            response.setEmployeeName(leave.getEmployeeName());
+            response.setEmployeeEmail(leave.getEmployeeEmail());
+            response.setLeaveType(leave.getLeaveType());
+            response.setStartDate(leave.getStartDate());
+            response.setEndDate(leave.getEndDate());
+            response.setReason(leave.getReason());
+            response.setStatus(leave.getStatus());
         }
 
-        return response;
+    } catch (FeignException exception) {
+        log.error(
+                "Unable to fetch leave details for request {}. HTTP status: {}, response: {}",
+                decision.getLeaveRequestId(),
+                exception.status(),
+                exception.contentUTF8(),
+                exception
+        );
     }
+
+    return response;
+}
 }

@@ -3,6 +3,7 @@ package com.leave.manager.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
@@ -28,6 +29,9 @@ public class NotificationServiceImpl implements NotificationService {
 
     private static final int MAX_ERROR_MESSAGE_LENGTH = 1000;
 
+    private static final Set<String> ALLOWED_LEAVE_EVENTS =
+            Set.of("LEAVE_APPLIED", "LEAVE_CANCELLED");
+
     private final JavaMailSender javaMailSender;
     private final NotificationLogRepository notificationLogRepository;
 
@@ -49,7 +53,7 @@ public class NotificationServiceImpl implements NotificationService {
             );
         }
 
-        NotificationLog notificationLog = createNotificationLog(
+        NotificationLog notificationLog = createDecisionNotification(
                 decision,
                 employeeId,
                 NotificationType.EMAIL
@@ -62,7 +66,6 @@ public class NotificationServiceImpl implements NotificationService {
 
         try {
             SimpleMailMessage mailMessage = new SimpleMailMessage();
-
             mailMessage.setTo(recipientEmail);
             mailMessage.setSubject(subject);
             mailMessage.setText(message);
@@ -95,7 +98,6 @@ public class NotificationServiceImpl implements NotificationService {
             }
 
             notificationLog.setErrorMessage(errorMessage);
-
             notificationLogRepository.save(notificationLog);
         }
     }
@@ -109,7 +111,7 @@ public class NotificationServiceImpl implements NotificationService {
 
         validateNotification(decision, employeeId, message);
 
-        NotificationLog notificationLog = createNotificationLog(
+        NotificationLog notificationLog = createDecisionNotification(
                 decision,
                 employeeId,
                 NotificationType.IN_APP
@@ -122,7 +124,8 @@ public class NotificationServiceImpl implements NotificationService {
         notificationLogRepository.save(notificationLog);
     }
 
-    private NotificationLog createNotificationLog(
+    // Create employee-facing notification linked to a manager decision.
+    private NotificationLog createDecisionNotification(
             ManagerDecision decision,
             Long employeeId,
             NotificationType notificationType) {
@@ -132,9 +135,64 @@ public class NotificationServiceImpl implements NotificationService {
         notificationLog.setManagerDecision(decision);
         notificationLog.setLeaveRequestId(decision.getLeaveRequestId());
         notificationLog.setEmployeeId(employeeId);
+        notificationLog.setManagerId(null);
         notificationLog.setNotificationType(notificationType);
 
         return notificationLog;
+    }
+
+    // Create manager-facing notification for apply/cancel events.
+    @Override
+    @Transactional
+    public void createManagerLeaveEvent(
+            Long managerId,
+            Long employeeId,
+            Long leaveRequestId,
+            String eventType,
+            String message) {
+
+        validateManagerId(managerId);
+        validateEmployeeId(employeeId);
+        validateLeaveRequestId(leaveRequestId);
+
+        if (eventType == null
+                || !ALLOWED_LEAVE_EVENTS.contains(eventType)) {
+            throw new IllegalArgumentException(
+                    "Invalid leave event type"
+            );
+        }
+
+        if (message == null || message.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Notification message is required"
+            );
+        }
+
+        NotificationLog notificationLog = new NotificationLog();
+
+        // No manager decision exists for an apply/cancel event.
+        notificationLog.setManagerDecision(null);
+
+        notificationLog.setManagerId(managerId);
+        notificationLog.setEmployeeId(employeeId);
+        notificationLog.setLeaveRequestId(leaveRequestId);
+
+        notificationLog.setNotificationType(NotificationType.IN_APP);
+        notificationLog.setMessage(message);
+
+        notificationLog.setNotificationStatus(NotificationStatus.SENT);
+        notificationLog.setSentAt(LocalDateTime.now());
+        notificationLog.setIsRead(false);
+
+        notificationLogRepository.save(notificationLog);
+
+        log.info(
+                "Manager notification created. Event: {}, Manager ID: {}, Employee ID: {}, Leave ID: {}",
+                eventType,
+                managerId,
+                employeeId,
+                leaveRequestId
+        );
     }
 
     private void validateNotification(
@@ -150,11 +208,7 @@ public class NotificationServiceImpl implements NotificationService {
             );
         }
 
-        if (employeeId == null || employeeId <= 0) {
-            throw new IllegalArgumentException(
-                    "Valid employee ID is required"
-            );
-        }
+        validateEmployeeId(employeeId);
 
         if (message == null || message.isBlank()) {
             throw new IllegalArgumentException(
@@ -171,7 +225,7 @@ public class NotificationServiceImpl implements NotificationService {
         validateEmployeeId(employeeId);
 
         return notificationLogRepository
-                .findByEmployeeIdAndNotificationTypeOrderByCreatedAtDesc(
+                .findByEmployeeIdAndManagerIdIsNullAndNotificationTypeOrderByCreatedAtDesc(
                         employeeId,
                         NotificationType.IN_APP
                 )
@@ -179,17 +233,7 @@ public class NotificationServiceImpl implements NotificationService {
                 .filter(notification ->
                         notification.getNotificationStatus()
                                 == NotificationStatus.SENT)
-                .map(notification -> new NotificationResponse(
-                        notification.getId(),
-                        notification.getLeaveRequestId(),
-                        notification.getEmployeeId(),
-                        notification.getMessage(),
-                        notification.getNotificationType(),
-                        notification.getNotificationStatus(),
-                        notification.getIsRead(),
-                        notification.getCreatedAt(),
-                        notification.getSentAt()
-                ))
+                .map(this::toResponse)
                 .toList();
     }
 
@@ -200,7 +244,7 @@ public class NotificationServiceImpl implements NotificationService {
         validateEmployeeId(employeeId);
 
         return notificationLogRepository
-                .countByEmployeeIdAndNotificationTypeAndNotificationStatusAndIsReadFalse(
+                .countByEmployeeIdAndManagerIdIsNullAndNotificationTypeAndNotificationStatusAndIsReadFalse(
                         employeeId,
                         NotificationType.IN_APP,
                         NotificationStatus.SENT
@@ -213,23 +257,23 @@ public class NotificationServiceImpl implements NotificationService {
             Long notificationId,
             Long employeeId) {
 
-        if (notificationId == null || notificationId <= 0) {
-            throw new InvalidDecisionException("Invalid notification ID.");
-        }
-
+        validateNotificationId(notificationId);
         validateEmployeeId(employeeId);
 
         NotificationLog notification = notificationLogRepository
-                .findByIdAndEmployeeIdAndNotificationType(
+                .findByIdAndEmployeeIdAndManagerIdIsNullAndNotificationType(
                         notificationId,
                         employeeId,
                         NotificationType.IN_APP
                 )
                 .orElseThrow(() ->
-                        new InvalidDecisionException("Notification not found.")
+                        new InvalidDecisionException(
+                                "Employee notification not found."
+                        )
                 );
 
-        if (notification.getNotificationStatus() != NotificationStatus.SENT) {
+        if (notification.getNotificationStatus()
+                != NotificationStatus.SENT) {
             throw new InvalidDecisionException(
                     "Only sent notifications can be marked as read."
             );
@@ -239,44 +283,132 @@ public class NotificationServiceImpl implements NotificationService {
         notificationLogRepository.save(notification);
     }
 
-    private void validateEmployeeId(Long employeeId) {
-
-        if (employeeId == null || employeeId <= 0) {
-            throw new InvalidDecisionException("Invalid employee ID.");
-        }
-    }
-    
     @Override
     @Transactional(readOnly = true)
-    public List<NotificationResponse> getManagerNotifications(Long managerId) {
+    public List<NotificationResponse> getManagerNotifications(
+            Long managerId) {
 
-        if (managerId == null || managerId <= 0) {
-            throw new InvalidDecisionException("Invalid manager ID.");
-        }
+        validateManagerId(managerId);
 
-        log.info("Fetching notification logs for manager ID: {}", managerId);
+        log.info(
+                "Fetching leave event notifications for manager ID: {}",
+                managerId
+        );
 
         List<NotificationLog> notifications =
                 notificationLogRepository
-                        .findByManagerDecision_ManagerIdOrderByCreatedAtDesc(
-                                managerId
+                        .findByManagerIdAndNotificationTypeAndNotificationStatusOrderByCreatedAtDesc(
+                                managerId,
+                                NotificationType.IN_APP,
+                                NotificationStatus.SENT
                         );
 
-        log.info("Found {} notification records for manager ID: {}",
-                notifications.size(), managerId);
+        log.info(
+                "Found {} notification records for manager ID: {}",
+                notifications.size(),
+                managerId
+        );
 
         return notifications.stream()
-                .map(notification -> new NotificationResponse(
-                        notification.getId(),
-                        notification.getLeaveRequestId(),
-                        notification.getEmployeeId(),
-                        notification.getMessage(),
-                        notification.getNotificationType(),
-                        notification.getNotificationStatus(),
-                        notification.getIsRead(),
-                        notification.getCreatedAt(),
-                        notification.getSentAt()
-                ))
+                .map(this::toResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public void markManagerNotificationAsRead(
+            Long notificationId,
+            Long managerId) {
+
+        validateNotificationId(notificationId);
+        validateManagerId(managerId);
+
+        NotificationLog notification = notificationLogRepository
+                .findByIdAndManagerIdAndNotificationType(
+                        notificationId,
+                        managerId,
+                        NotificationType.IN_APP
+                )
+                .orElseThrow(() ->
+                        new InvalidDecisionException(
+                                "Manager notification not found."
+                        )
+                );
+
+        if (notification.getNotificationStatus()
+                != NotificationStatus.SENT) {
+            throw new InvalidDecisionException(
+                    "Only sent notifications can be marked as read."
+            );
+        }
+
+        if (Boolean.TRUE.equals(notification.getIsRead())) {
+            log.info(
+                    "Notification {} is already marked as read.",
+                    notificationId
+            );
+            return;
+        }
+
+        notification.setIsRead(true);
+        notificationLogRepository.save(notification);
+
+        log.info(
+                "Manager {} marked notification {} as read.",
+                managerId,
+                notificationId
+        );
+    }
+
+    private NotificationResponse toResponse(
+            NotificationLog notification) {
+
+        return new NotificationResponse(
+                notification.getId(),
+                notification.getLeaveRequestId(),
+                notification.getEmployeeId(),
+                notification.getMessage(),
+                notification.getNotificationType(),
+                notification.getNotificationStatus(),
+                notification.getIsRead(),
+                notification.getCreatedAt(),
+                notification.getSentAt()
+        );
+    }
+
+    private void validateNotificationId(Long notificationId) {
+
+        if (notificationId == null || notificationId <= 0) {
+            throw new InvalidDecisionException(
+                    "Invalid notification ID."
+            );
+        }
+    }
+
+    private void validateEmployeeId(Long employeeId) {
+
+        if (employeeId == null || employeeId <= 0) {
+            throw new InvalidDecisionException(
+                    "Invalid employee ID."
+            );
+        }
+    }
+
+    private void validateManagerId(Long managerId) {
+
+        if (managerId == null || managerId <= 0) {
+            throw new InvalidDecisionException(
+                    "Invalid manager ID."
+            );
+        }
+    }
+
+    private void validateLeaveRequestId(Long leaveRequestId) {
+
+        if (leaveRequestId == null || leaveRequestId <= 0) {
+            throw new IllegalArgumentException(
+                    "Invalid leave request ID"
+            );
+        }
     }
 }

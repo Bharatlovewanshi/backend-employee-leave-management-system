@@ -37,7 +37,7 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(
                 List.of(
                         "http://localhost:5173",
-                        "http://localhost:5174"
+                        "http://localhost:3000"
                 )
         );
 
@@ -97,11 +97,17 @@ public class SecurityConfig {
                             "/error"
                     ).permitAll()
 
-                    // Manager-only notification endpoint
-                    .requestMatchers("/api/notifications/manager")
+                    // Internal service-to-service notification endpoint.
+                    // Controller must validate X-INTERNAL-SECRET.
+                    .requestMatchers(
+                            "/api/internal/notifications/leave-events"
+                    ).permitAll()
+
+                    // Manager notification endpoints
+                    .requestMatchers("/api/notifications/manager/**")
                     .hasRole("MANAGER")
 
-                    // Employee-only notification endpoints
+                    // Employee notification endpoints
                     .requestMatchers("/api/notifications/**")
                     .hasRole("EMPLOYEE")
 
@@ -109,7 +115,7 @@ public class SecurityConfig {
                     .requestMatchers("/api/manager/**")
                     .hasRole("MANAGER")
 
-                    // All remaining endpoints require authentication
+                    // Remaining authenticated endpoints
                     .anyRequest().authenticated()
             )
 
